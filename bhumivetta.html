@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bhumivetta — Technical Process Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#101B1D;
+    --bg:#16262A;
+    --panel:#1C3034;
+    --panel-line:rgba(233,228,216,0.10);
+    --parchment:#EDE4D3;
+    --ink:#2B2118;
+    --ink-soft:#6B5A47;
+    --text:#E9E4D8;
+    --text-muted:#93ACA6;
+    --moss:#7FA36E;
+    --moss-deep:#4E6B42;
+    --ochre:#D08A46;
+    --ochre-deep:#8A5423;
+    --sky:#57A6B6;
+    --sky-deep:#2E5A65;
+    --gold:#C7A463;
+  }
+  * { box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:radial-gradient(ellipse at 20% -10%, #1E3438 0%, var(--bg-deep) 60%);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    padding:28px;
+  }
+  .app{ max-width:1180px; margin:0 auto; }
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    padding-bottom:18px; margin-bottom:22px;
+    border-bottom:1px solid var(--panel-line);
+    gap:16px; flex-wrap:wrap;
+  }
+  .brand{ display:flex; flex-direction:column; gap:4px; }
+  .brand .name{
+    font-family:'Fraunces', serif; font-weight:600; font-size:30px; letter-spacing:0.2px;
+    color:var(--text);
+  }
+  .brand .tag{ font-size:13px; color:var(--text-muted); }
+  .status-cluster{ display:flex; align-items:center; gap:14px; }
+  .parcel-badge{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--text-muted);
+    border:1px solid var(--panel-line); padding:6px 12px; border-radius:3px;
+  }
+  .status-pill{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; padding:6px 14px; border-radius:20px;
+    display:flex; align-items:center; gap:8px; border:1px solid var(--panel-line);
+    transition:all .25s ease;
+  }
+  .status-pill .dot{ width:7px; height:7px; border-radius:50%; background:var(--sky); }
+  .status-pill.waiting .dot{ background:var(--ochre); }
+  .status-pill.idle .dot{ background:var(--text-muted); }
+
+  /* ---------- Layout ---------- */
+  .layout{ display:grid; grid-template-columns:280px 1fr; gap:22px; }
+  @media (max-width:880px){ .layout{ grid-template-columns:1fr; } }
+
+  /* ---------- Stepper ---------- */
+  .stepper{ display:flex; flex-direction:column; gap:2px; }
+  .step{
+    display:flex; gap:12px; padding:11px 10px; border-radius:4px;
+    border-left:2px solid transparent; opacity:0.4; transition:all .3s ease;
+  }
+  .step .num{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--text-muted);
+    width:20px; flex-shrink:0; padding-top:1px;
+  }
+  .step .txt .t{ font-size:13.5px; font-weight:600; }
+  .step .txt .d{ font-size:11.5px; color:var(--text-muted); margin-top:2px; line-height:1.4; }
+  .step.active{
+    opacity:1; background:rgba(87,166,182,0.10); border-left-color:var(--sky);
+  }
+  .step.active .num{ color:var(--sky); }
+  .step.done{ opacity:0.65; }
+  .step.done .num::after{ content:" ✓"; color:var(--moss); }
+
+  .controls{ margin-top:20px; display:flex; flex-direction:column; gap:8px; }
+  button{
+    font-family:'Inter', sans-serif; font-weight:600; font-size:13.5px;
+    border-radius:4px; border:1px solid transparent; padding:11px 16px;
+    cursor:pointer; transition:filter .15s ease, transform .05s ease;
+  }
+  button:active{ transform:translateY(1px); }
+  button.primary{ background:var(--sky); color:#0C1D20; }
+  button.primary:hover{ filter:brightness(1.08); }
+  button.primary:disabled{ background:#33474A; color:#6D8285; cursor:not-allowed; }
+  button.ghost{ background:transparent; color:var(--text-muted); border-color:var(--panel-line); }
+  button.ghost:hover{ color:var(--text); border-color:var(--text-muted); }
+  button.confirm{ background:var(--moss); color:#12200D; }
+  button.flag{ background:var(--ochre); color:#2B1806; }
+
+  /* ---------- Main panels ---------- */
+  .panel{
+    background:var(--panel); border:1px solid var(--panel-line); border-radius:6px;
+    padding:20px;
+  }
+  .panel + .panel{ margin-top:16px; }
+  .panel h3{
+    font-family:'Fraunces', serif; font-weight:600; font-size:16px; margin:0 0 12px 0;
+  }
+
+  /* map */
+  .map-wrap{ position:relative; }
+  svg#stage{ width:100%; height:auto; display:block; background:#0F1D1F; border-radius:4px; }
+  .legend{ display:flex; gap:18px; margin-top:10px; flex-wrap:wrap; }
+  .legend .item{ display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--text-muted); }
+  .legend .swatch{ width:16px; height:2px; }
+  .caption{ font-size:11px; color:var(--text-muted); margin-top:10px; font-style:italic; }
+
+  /* stat cards */
+  .stats{ display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; }
+  @media (max-width:880px){ .stats{ grid-template-columns:repeat(2,1fr); } }
+  .stat{
+    background:var(--bg); border:1px solid var(--panel-line); border-radius:5px; padding:14px;
+    transition:border-color .3s ease;
+  }
+  .stat.filled{ border-color:var(--sky-deep); }
+  .stat .label{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px; }
+  .stat .val{ font-family:'IBM Plex Mono', monospace; font-size:13.5px; line-height:1.6; }
+  .stat .val .pending{ color:var(--text-muted); }
+  .stat .val b{ color:var(--text); font-weight:600; }
+
+  /* verdict banner */
+  .verdict{
+    margin-top:16px; padding:13px 16px; border-radius:5px; font-size:13.5px;
+    display:none; align-items:center; gap:10px; font-weight:600;
+  }
+  .verdict.show{ display:flex; }
+  .verdict.flagged{ background:rgba(208,138,70,0.14); border:1px solid var(--ochre-deep); color:#F0C089; }
+  .verdict.clear{ background:rgba(127,163,110,0.14); border:1px solid var(--moss-deep); color:#BBDBA9; }
+
+  /* decision buttons */
+  .decision{ margin-top:14px; display:none; gap:10px; }
+  .decision.show{ display:flex; }
+
+  /* alerts */
+  .alerts{ display:flex; gap:12px; margin-top:6px; flex-wrap:wrap; }
+  .alert-chip{
+    display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:20px;
+    border:1px solid var(--panel-line); font-size:12px; color:var(--text-muted);
+    transition:all .3s ease;
+  }
+  .alert-chip.sent{ border-color:var(--moss-deep); color:#BBDBA9; background:rgba(127,163,110,0.10); }
+  .alert-chip .dot{ width:6px; height:6px; border-radius:50%; background:var(--text-muted); }
+  .alert-chip.sent .dot{ background:var(--moss); }
+
+  /* schedule */
+  .schedule-line{ font-family:'IBM Plex Mono', monospace; font-size:13.5px; margin-top:4px; }
+  .schedule-line b{ color:var(--sky); }
+
+  /* log console */
+  .log{
+    background:#0C1618; border:1px solid var(--panel-line); border-radius:5px;
+    height:150px; overflow-y:auto; padding:12px 14px; font-family:'IBM Plex Mono', monospace;
+    font-size:12px; color:#8FB0A8; line-height:1.7;
+  }
+  .log .entry .t{ color:#4F6B65; margin-right:8px; }
+  .log .sep{ color:var(--gold); opacity:0.6; margin:4px 0; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="brand">
+      <div class="name">Bhumivetta</div>
+      <div class="tag">Technical Approach — live process simulation · SIH 2026</div>
+    </div>
+    <div class="status-cluster">
+      <div class="parcel-badge" id="parcelBadge">PARCEL #001</div>
+      <div class="status-pill idle" id="statusPill"><span class="dot"></span><span id="statusText">Idle</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- STEPPER -->
+    <div>
+      <div class="stepper" id="stepper"></div>
+      <div class="controls">
+        <button class="primary" id="nextBtn">Next Step →</button>
+        <button class="ghost" id="resetBtn">Reset simulation</button>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div>
+      <div class="panel">
+        <h3>Field Survey — Live Map</h3>
+        <div class="map-wrap">
+          <svg id="stage" viewBox="0 0 640 420" xmlns="http://www.w3.org/2000/svg">
+            <!-- RoR reference boundary (static, dashed) -->
+            <polygon id="rorPoly" points="" fill="none" stroke="#C7A463" stroke-width="2" stroke-dasharray="6,5" opacity="0.85"/>
+            <!-- Surveyed boundary (revealed by drone flight) -->
+            <polygon id="surveyedPoly" points="" fill="none" stroke="#57A6B6" stroke-width="2.5"/>
+            <!-- classification fill (invisible until AI step) -->
+            <polygon id="classFill" points="" fill="none" opacity="0"/>
+            <!-- IoT sensor node -->
+            <g id="sensorNode" opacity="0">
+              <circle r="9" fill="#0F1D1F" stroke="#D08A46" stroke-width="2"/>
+              <line x1="0" y1="-9" x2="0" y2="-18" stroke="#D08A46" stroke-width="2"/>
+              <circle cy="-18" r="2.5" fill="#D08A46"/>
+            </g>
+            <!-- drone icon -->
+            <g id="drone" opacity="0">
+              <line x1="-10" y1="-10" x2="10" y2="10" stroke="#E9E4D8" stroke-width="1.6"/>
+              <line x1="-10" y1="10" x2="10" y2="-10" stroke="#E9E4D8" stroke-width="1.6"/>
+              <circle cx="-10" cy="-10" r="3" fill="#57A6B6"/>
+              <circle cx="10" cy="-10" r="3" fill="#57A6B6"/>
+              <circle cx="-10" cy="10" r="3" fill="#57A6B6"/>
+              <circle cx="10" cy="10" r="3" fill="#57A6B6"/>
+              <circle r="2.5" fill="#E9E4D8"/>
+            </g>
+          </svg>
+          <div class="legend">
+            <div class="item"><span class="swatch" style="background:#C7A463;border-top:2px dashed #C7A463;"></span> RoR record boundary (existing paper record)</div>
+            <div class="item"><span class="swatch" style="background:#57A6B6;"></span> Drone-surveyed boundary</div>
+            <div class="item">🛰️ Drone / GPS unit</div>
+            <div class="item">📡 IoT soil &amp; weather node</div>
+          </div>
+          <div class="caption">Illustrative simulation — sensor readings, classification and coordinates are procedurally generated for this demo, not live field data.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Pipeline Readouts</h3>
+        <div class="stats">
+          <div class="stat" id="statGps">
+            <div class="label">Drone / GPS fix</div>
+            <div class="val pending" id="statGpsVal">Awaiting survey…</div>
+          </div>
+          <div class="stat" id="statSensor">
+            <div class="label">IoT soil &amp; weather node</div>
+            <div class="val pending" id="statSensorVal">No data yet…</div>
+          </div>
+          <div class="stat" id="statClass">
+            <div class="label">AI land classification</div>
+            <div class="val pending" id="statClassVal">Not classified…</div>
+          </div>
+          <div class="stat" id="statArea">
+            <div class="label">Area computation</div>
+            <div class="val pending" id="statAreaVal">Not computed…</div>
+          </div>
+        </div>
+
+        <div class="verdict" id="verdict"></div>
+        <div class="decision" id="decision">
+          <button class="confirm" id="confirmBtn">✓ Confirm &amp; approve record</button>
+          <button class="flag" id="flagBtn">⚑ Flag for manual re-survey</button>
+        </div>
+
+        <div class="alerts" id="alerts" style="display:none;">
+          <div class="alert-chip" data-name="Landowner"><span class="dot"></span> Landowner</div>
+          <div class="alert-chip" data-name="Gram Panchayat"><span class="dot"></span> Gram Panchayat</div>
+          <div class="alert-chip" data-name="District Revenue Officer"><span class="dot"></span> District Revenue Officer</div>
+        </div>
+
+        <div class="schedule-line" id="scheduleLine" style="display:none;"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Activity Log</h3>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ---------- Config ----------
+  const STEPS = [
+    { t:"Field Login", d:"Officer session starts, parcel identified" },
+    { t:"Drone / GPS Survey Capture", d:"Flight path traced, boundary geotagged" },
+    { t:"IoT Soil & Weather Read", d:"Sensor node reports field conditions" },
+    { t:"AI Land Classification", d:"Parcel use auto-classified" },
+    { t:"Geo-Location & Area Computation", d:"Surveyed area computed from boundary" },
+    { t:"Priority Flagging", d:"Compared against RoR record for mismatch" },
+    { t:"Manual Verification", d:"Officer confirms or corrects the flag" },
+    { t:"Parallel Alerts", d:"Stakeholders notified of outcome" },
+    { t:"Adaptive Scheduling", d:"Next resurvey interval is set" }
+  ];
+
+  const rorPointsBase = [[120,90],[430,70],[480,230],[300,340],[100,270]];
+  const SCALE_M = 0.6; // meters per svg unit
+  const SQM_PER_ACRE = 4046.8564224;
+
+  let stepIdx = 0;
+  let parcelNum = 1;
+  let surveyedPoints = null;
+  let rorArea = null, surveyedArea = null, diffPct = null, flagged = false;
+  let classification = null;
+  let sensor = null;
+  let officerDecision = null;
+  let nextEnabled = true;
+
+  // ---------- Helpers ----------
+  function polygonArea(pts){
+    let area = 0;
+    for(let i=0;i<pts.length;i++){
+      const [x1,y1] = pts[i];
+      const [x2,y2] = pts[(i+1)%pts.length];
+      area += x1*y2 - x2*y1;
+    }
+    return Math.abs(area/2);
+  }
+  function toAcres(pxArea){
+    const sqm = pxArea * SCALE_M * SCALE_M;
+    return sqm / SQM_PER_ACRE;
+  }
+  function jitter(points, amp){
+    return points.map(([x,y]) => [
+      x + (Math.random()*2-1)*amp,
+      y + (Math.random()*2-1)*amp
+    ]);
+  }
+  function pointsToStr(pts){ return pts.map(p=>p.join(",")).join(" "); }
+  function centroid(pts){
+    let cx=0, cy=0;
+    pts.forEach(([x,y])=>{ cx+=x; cy+=y; });
+    return [cx/pts.length, cy/pts.length];
+  }
+  function log(msg, sep){
+    const el = document.getElementById('log');
+    const time = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const line = document.createElement('div');
+    if(sep){
+      line.className = 'sep';
+      line.textContent = '── ' + msg + ' ──';
+    } else {
+      line.className = 'entry';
+      line.innerHTML = '<span class="t">'+time+'</span>' + msg;
+    }
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+  function setStatus(text, mode){
+    const pill = document.getElementById('statusPill');
+    pill.className = 'status-pill' + (mode ? ' '+mode : '');
+    document.getElementById('statusText').textContent = text;
+  }
+
+  // ---------- Render stepper ----------
+  function renderStepper(){
+    const el = document.getElementById('stepper');
+    el.innerHTML = '';
+    STEPS.forEach((s,i)=>{
+      const div = document.createElement('div');
+      div.className = 'step' + (i===stepIdx ? ' active' : (i<stepIdx ? ' done':''));
+      div.innerHTML = '<div class="num">'+String(i+1).padStart(2,'0')+'</div>'+
+        '<div class="txt"><div class="t">'+s.t+'</div><div class="d">'+s.d+'</div></div>';
+      el.appendChild(div);
+    });
+  }
+
+  // ---------- Drone animation ----------
+  function animateBoundaryAndDrone(points, duration, onDone){
+    const surveyedPoly = document.getElementById('surveyedPoly');
+    const closed = points.concat([points[0]]);
+    surveyedPoly.setAttribute('points', pointsToStr(points));
+
+    // compute perimeter length for dash reveal
+    let total = 0;
+    const segs = [];
+    for(let i=0;i<closed.length-1;i++){
+      const [x1,y1] = closed[i], [x2,y2] = closed[i+1];
+      const d = Math.hypot(x2-x1, y2-y1);
+      segs.push({x1,y1,x2,y2,d, start: total});
+      total += d;
+    }
+    surveyedPoly.style.transition = 'none';
+    surveyedPoly.style.strokeDasharray = total;
+    surveyedPoly.style.strokeDashoffset = total;
+    // force reflow
+    surveyedPoly.getBoundingClientRect();
+    requestAnimationFrame(()=>{
+      surveyedPoly.style.transition = 'stroke-dashoffset '+duration+'ms linear';
+      surveyedPoly.style.strokeDashoffset = 0;
+    });
+
+    const drone = document.getElementById('drone');
+    drone.setAttribute('opacity','1');
+    const start = performance.now();
+    function frame(now){
+      const elapsed = now - start;
+      const t = Math.min(elapsed/duration, 1);
+      const dist = t*total;
+      let seg = segs[segs.length-1];
+      for(const s of segs){ if(dist>=s.start && dist<=s.start+s.d){ seg=s; break; } }
+      const segT = seg.d===0 ? 0 : (dist-seg.start)/seg.d;
+      const x = seg.x1 + (seg.x2-seg.x1)*segT;
+      const y = seg.y1 + (seg.y2-seg.y1)*segT;
+      const angle = Math.atan2(seg.y2-seg.y1, seg.x2-seg.x1) * 180/Math.PI;
+      drone.setAttribute('transform', 'translate('+x+','+y+') rotate('+angle+')');
+      if(t<1){ requestAnimationFrame(frame); }
+      else if(onDone){ onDone(); }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function countUp(el, from, to, duration, suffix, decimals){
+    const start = performance.now();
+    function frame(now){
+      const t = Math.min((now-start)/duration, 1);
+      const val = from + (to-from)*t;
+      el.textContent = val.toFixed(decimals!==undefined?decimals:2) + (suffix||'');
+      if(t<1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- Step logic ----------
+  function resetParcelData(){
+    surveyedPoints = null; rorArea = null; surveyedArea = null; diffPct = null;
+    flagged = false; classification = null; sensor = null; officerDecision = null;
+
+    document.getElementById('rorPoly').setAttribute('points', pointsToStr(rorPointsBase));
+    rorArea = polygonArea(rorPointsBase);
+
+    const surveyedPoly = document.getElementById('surveyedPoly');
+    surveyedPoly.style.transition = 'none';
+    surveyedPoly.setAttribute('points','');
+    document.getElementById('drone').setAttribute('opacity','0');
+    document.getElementById('sensorNode').setAttribute('opacity','0');
+    const classFill = document.getElementById('classFill');
+    classFill.setAttribute('opacity','0');
+    classFill.setAttribute('points','');
+
+    ['statGps','statSensor','statClass','statArea'].forEach(id=>{
+      document.getElementById(id).classList.remove('filled');
+    });
+    document.getElementById('statGpsVal').innerHTML = '<span class="pending">Awaiting survey…</span>';
+    document.getElementById('statSensorVal').innerHTML = '<span class="pending">No data yet…</span>';
+    document.getElementById('statClassVal').innerHTML = '<span class="pending">Not classified…</span>';
+    document.getElementById('statAreaVal').innerHTML = '<span class="pending">Not computed…</span>';
+
+    const verdict = document.getElementById('verdict');
+    verdict.className = 'verdict';
+    verdict.innerHTML = '';
+
+    document.getElementById('decision').className = 'decision';
+    document.getElementById('alerts').style.display = 'none';
+    document.querySelectorAll('.alert-chip').forEach(c=>c.classList.remove('sent'));
+    document.getElementById('scheduleLine').style.display = 'none';
+
+    document.getElementById('parcelBadge').textContent = 'PARCEL #' + String(parcelNum).padStart(3,'0');
+  }
+
+  function runStep(i){
+    setStatus('Running…');
+    nextEnabled = false;
+    document.getElementById('nextBtn').disabled = true;
+
+    if(i===0){
+      log('Officer session started · Parcel #'+String(parcelNum).padStart(3,'0')+' · GPS handshake OK');
+      nextEnabled = true; document.getElementById('nextBtn').disabled = false;
+      setStatus('Idle');
+    }
+
+    else if(i===1){
+      const scenario = Math.random();
+      const amp = scenario < 0.5 ? (6 + Math.random()*8) : (18 + Math.random()*22);
+      surveyedPoints = jitter(rorPointsBase, amp);
+      animateBoundaryAndDrone(surveyedPoints, 2200, ()=>{
+        document.getElementById('statGps').classList.add('filled');
+        const sats = Math.floor(8 + Math.random()*7);
+        document.getElementById('statGpsVal').innerHTML =
+          'Satellites locked: <b>'+sats+'</b><br>Altitude: <b>120m</b><br>Waypoints logged: <b>'+surveyedPoints.length+'</b>';
+        log('Drone survey complete · '+sats+' satellites · boundary geotagged');
+        nextEnabled = true; document.getElementById('nextBtn').disabled = false;
+        setStatus('Idle');
+      });
+    }
+
+    else if(i===2){
+      const [cx,cy] = centroid(surveyedPoints || rorPointsBase);
+      const node = document.getElementById('sensorNode');
+      node.setAttribute('transform','translate('+cx+','+cy+')');
+      node.setAttribute('opacity','1');
+      sensor = {
+        moisture: Math.round(15 + Math.random()*40),
+        temp: Math.round((22 + Math.random()*16)*10)/10,
+        humidity: Math.round(35 + Math.random()*45)
+      };
+      document.getElementById('statSensor').classList.add('filled');
+      const valEl = document.getElementById('statSensorVal');
+      valEl.innerHTML = 'Soil moisture: <b>—</b>%<br>Temperature: <b>—</b>°C<br>Humidity: <b>—</b>%';
+      setTimeout(()=>{
+        valEl.innerHTML =
+          'Soil moisture: <b>'+sensor.moisture+'</b>%<br>Temperature: <b>'+sensor.temp+'</b>°C<br>Humidity: <b>'+sensor.humidity+'</b>%';
+        log('IoT node reading received · moisture '+sensor.moisture+'% · '+sensor.temp+'°C');
+        nextEnabled = true; document.getElementById('nextBtn').disabled = false;
+        setStatus('Idle');
+      }, 900);
+    }
+
+    else if(i===3){
+      const options = [
+        {label:'Agricultural — Cropland', color:'#7FA36E'},
+        {label:'Residential — Homestead', color:'#D08A46'},
+        {label:'Fallow / Barren', color:'#C7A463'},
+        {label:'Mixed Use', color:'#57A6B6'}
+      ];
+      classification = options[Math.floor(Math.random()*options.length)];
+      classification.confidence = Math.round(85 + Math.random()*13);
+      const fill = document.getElementById('classFill');
+      fill.setAttribute('points', pointsToStr(surveyedPoints || rorPointsBase));
+      fill.setAttribute('fill', classification.color);
+      fill.style.transition = 'opacity 700ms ease';
+      requestAnimationFrame(()=>{ fill.setAttribute('opacity','0.16'); });
+      document.getElementById('statClass').classList.add('filled');
+      document.getElementById('statClassVal').innerHTML =
+        '<b>'+classification.label+'</b><br>Confidence: <b>'+classification.confidence+'%</b>';
+      log('AI classification: '+classification.label+' ('+classification.confidence+'% confidence)');
+      setTimeout(()=>{
+        nextEnabled = true; document.getElementById('nextBtn').disabled = false;
+        setStatus('Idle');
+      }, 700);
+    }
+
+    else if(i===4){
+      surveyedArea = polygonArea(surveyedPoints || rorPointsBase);
+      const rorAcres = toAcres(rorArea);
+      const surveyedAcres = toAcres(surveyedArea);
+      diffPct = Math.abs(surveyedAcres-rorAcres)/rorAcres*100;
+      document.getElementById('statArea').classList.add('filled');
+      const valEl = document.getElementById('statAreaVal');
+      valEl.innerHTML =
+        'RoR record: <b><span id="rorNum">0.00</span> ac</b><br>'+
+        'Drone-computed: <b><span id="survNum">0.00</span> ac</b><br>'+
+        'Variance: <b><span id="diffNum">0.00</span>%</b>';
+      countUp(document.getElementById('rorNum'), 0, rorAcres, 900, '', 2);
+      countUp(document.getElementById('survNum'), 0, surveyedAcres, 900, '', 2);
+      countUp(document.getElementById('diffNum'), 0, diffPct, 1100, '', 1);
+      log('Area computed · RoR '+rorAcres.toFixed(2)+' ac vs surveyed '+surveyedAcres.toFixed(2)+' ac · variance '+diffPct.toFixed(1)+'%');
+      setTimeout(()=>{
+        nextEnabled = true; document.getElementById('nextBtn').disabled = false;
+        setStatus('Idle');
+      }, 1150);
+    }
+
+    else if(i===5){
+      flagged = diffPct >= 4;
+      const verdict = document.getElementById('verdict');
+      verdict.className = 'verdict show ' + (flagged ? 'flagged' : 'clear');
+      verdict.innerHTML = flagged
+        ? '⚑ Discrepancy detected — '+diffPct.toFixed(1)+'% mismatch against RoR record. Routed for manual verification.'
+        : '✓ Boundary match confirmed — '+diffPct.toFixed(1)+'% variance, within tolerance.';
+      log(flagged ? 'Priority flag raised · '+diffPct.toFixed(1)+'% mismatch' : 'No discrepancy · within tolerance');
+      nextEnabled = true; document.getElementById('nextBtn').disabled = false;
+      setStatus('Idle');
+    }
+
+    else if(i===6){
+      setStatus('Awaiting officer input', 'waiting');
+      document.getElementById('decision').className = 'decision show';
+      log('Routed to officer for manual verification…');
+      // nextBtn stays disabled until decision made
+    }
+
+    else if(i===7){
+      document.getElementById('alerts').style.display = 'flex';
+      const chips = document.querySelectorAll('.alert-chip');
+      chips.forEach((chip, idx)=>{
+        setTimeout(()=>{
+          chip.classList.add('sent');
+          log('Alert sent → '+chip.dataset.name);
+          if(idx === chips.length-1){
+            nextEnabled = true; document.getElementById('nextBtn').disabled = false;
+            setStatus('Idle');
+          }
+        }, idx*500);
+      });
+    }
+
+    else if(i===8){
+      let months;
+      if(officerDecision === 'flag') months = '3–6 months (priority re-check)';
+      else if(classification && classification.label.startsWith('Agricultural')) months = '12 months (seasonal cycle)';
+      else if(classification && classification.label.startsWith('Residential')) months = '36 months (low change expected)';
+      else months = '18 months';
+      const line = document.getElementById('scheduleLine');
+      line.style.display = 'block';
+      line.innerHTML = 'Next resurvey scheduled: <b>'+months+'</b>';
+      log('Adaptive scheduling set: next resurvey in '+months, false);
+      log('Cycle complete for Parcel #'+String(parcelNum).padStart(3,'0'), true);
+      document.getElementById('nextBtn').textContent = 'Start Next Parcel →';
+      nextEnabled = true; document.getElementById('nextBtn').disabled = false;
+      setStatus('Idle');
+    }
+  }
+
+  function goNext(){
+    if(!nextEnabled) return;
+    if(stepIdx === STEPS.length-1){
+      parcelNum += 1;
+      stepIdx = 0;
+      document.getElementById('nextBtn').textContent = 'Next Step →';
+      resetParcelData();
+      renderStepper();
+      runStep(0);
+      return;
+    }
+    stepIdx += 1;
+    renderStepper();
+    runStep(stepIdx);
+  }
+
+  document.getElementById('nextBtn').addEventListener('click', goNext);
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    parcelNum = 1; stepIdx = 0;
+    document.getElementById('nextBtn').textContent = 'Next Step →';
+    document.getElementById('log').innerHTML = '';
+    resetParcelData();
+    renderStepper();
+    setStatus('Idle');
+    log('Simulation reset', true);
+  });
+  document.getElementById('confirmBtn').addEventListener('click', ()=>{
+    officerDecision = 'confirm';
+    log('Officer decision: Confirmed & approved record');
+    document.getElementById('decision').className = 'decision';
+    nextEnabled = true; document.getElementById('nextBtn').disabled = false;
+    setStatus('Idle');
+  });
+  document.getElementById('flagBtn').addEventListener('click', ()=>{
+    officerDecision = 'flag';
+    log('Officer decision: Flagged for manual re-survey');
+    document.getElementById('decision').className = 'decision';
+    nextEnabled = true; document.getElementById('nextBtn').disabled = false;
+    setStatus('Idle');
+  });
+
+  // ---------- Init ----------
+  resetParcelData();
+  renderStepper();
+  log('Simulation ready. Click "Next Step" to begin.', true);
+})();
+</script>
+</body>
+</html>
